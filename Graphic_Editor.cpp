@@ -21,34 +21,38 @@ int main ()
 {
     Create_Background ();
 
-    ClRectButton wind({100, 101}, {1010, 705});
-    ClAbstractWindow& w = wind;
+    ClApplication appl;
 
-    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
+    appl.Start_Program ();
 
-    int cnt = 0;
-    while (cnt >= 500)
-    {
-        while (!In (txMousePos(), {100, 101, 1010, 705})) {}
-
-        w.MouseOver ();
-
-        txSleep ();
-
-//        while (In (txMousePos(), {100, 101, 1010, 705}))
-//        {
-//            w.MouseOver ();
-//        }
-
-        w.MouseOut ();
-        txSleep ();
-        cnt++;
-    }
-
-    w.Delete ();
-
-    ClScrollbar sb({100, 100}, {125, 400});
-    ClAbstractWindow& ww = sb;
+//    ClRectButton wind({100, 101}, {1010, 705});
+//    ClAbstractWindow& w = wind;
+//
+//    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
+//
+//    int cnt = 0;
+//    while (cnt >= 500)
+//    {
+//        while (!In (txMousePos(), {100, 101, 1010, 705})) {}
+//
+//        w.MouseOver ();
+//
+//        txSleep ();
+//
+////        while (In (txMousePos(), {100, 101, 1010, 705}))
+////        {
+////            w.MouseOver ();
+////        }
+//
+//        w.MouseOut ();
+//        txSleep ();
+//        cnt++;
+//    }
+//
+//    w.Delete ();
+//
+//    ClScrollbar sb({100, 100}, {125, 400});
+//    ClAbstractWindow& ww = sb;
 
 //    for (int i = 0; i < 10; i++)
 //    {
@@ -61,11 +65,11 @@ int main ()
 //
 //    args.Print();
 
-    for (int i = 0; i < 10; i++)
-    {
-        ww.MouseClick ();
-        txSleep (1000);
-    }
+//    for (int i = 0; i < 10; i++)
+//    {
+//        ww.MouseClick ();
+//        txSleep (1000);
+//    }
 
 
 //    w.Draw ({128, 0, 256}, "Denis", {5, 49, 157});

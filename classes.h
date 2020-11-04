@@ -24,6 +24,8 @@ Coord_t (int x, int y)
 Button_t (Coord_t left_up, Coord_t right_down)
 */
 
+#include <vector>
+
 #define UNPACKING_DRAW_ARGS(args)\
     const Color_t color = args.color;\
     char *buf = args.buf;\
@@ -42,7 +44,9 @@ public:
     virtual bool MouseOver  () {} // return true if mouse is over window
     virtual bool MouseOut   () {} // return true if mouse is no longer over window
     virtual bool Delete     () {} // return true if window has been deleted
-    virtual bool MouseClick () {}
+    virtual bool MouseClick () { printf ("A"); }
+
+//    void Print () { printf ("%p\n", this); }
 
     ~ClAbstractWindow() = default;
 };
@@ -174,7 +178,7 @@ public:
                  down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd)
     {
         number_of_first_string = 1;
-        max_cnt_of_string = 4; // random number for test (depends on text)
+        max_cnt_of_string = 10; // random number for test (depends on text)
 
         txRectangle (lu.x, lu.y, rd.x, rd.y);
     }
@@ -212,6 +216,8 @@ public:
 
     virtual bool MouseClick ()
     {
+//        printf ("number_of_first_string = [%d]\n", number_of_first_string);
+
         int slider_height = slider.Get_And_Change_RD_Y() - slider.Get_And_Change_LU_Y();
         int bg_height     = down.Get_And_Change_LU_Y() - up.Get_And_Change_RD_Y();
 
@@ -225,8 +231,18 @@ public:
             step = down.Get_And_Change_LU_Y () - slider.Get_And_Change_RD_Y ();
 //            printf ("Offset = [%d]\n", step);
         }
+        else if (number_of_first_string <= 0)
+        {
+            step = up.Get_And_Change_RD_Y () - slider.Get_And_Change_LU_Y ();
+        }
 
-        if (slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ())
+        int rd = (rand() % 3 - 1);
+        step *= rd;
+
+//        printf ("number_of_first_string = [%d],   step = [%d]\n", number_of_first_string, step);
+
+        if (((slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ()) && step > 0) ||
+            ((slider.Get_And_Change_LU_Y () ==   up.Get_And_Change_RD_Y ()) && step < 0))
         {
             step = 0;
 //            printf ("AAA\n");
@@ -234,10 +250,21 @@ public:
 
 //        if ()
 //        {
+
+
         Draw ({{}, {}, {}, {}, step});
 //        }
 
-        number_of_first_string++;
+        number_of_first_string += rd;
+
+        if (number_of_first_string > max_cnt_of_string)
+        {
+            number_of_first_string = max_cnt_of_string;
+        }
+        else if (number_of_first_string < 1)
+        {
+            number_of_first_string = 1;
+        }
     }
 
 private:
@@ -255,9 +282,45 @@ class ClApplication
 {
 public:
 
+    ClApplication ()
+    {
+//        ClAbstractWindow *ww = new ClAbstractWindow(w);
+
+//        arr_of_windows[0]->Print ();
+
+//        arr_of_windows[0]->Draw ({});
+//        ww->Draw ({});
+    }
+
+    void Start_Program ()
+    {
+        ClScrollbar sb({100, 100}, {125, 400});
+        ClAbstractWindow& ww = sb;
+
+        while (!txGetAsyncKeyState (VK_ESCAPE))
+        {
+            int helper = 0;
+            if ((helper = txMouseButtons()) != 3)
+            {
+                if (helper & 1)
+                {
+//                    arr_of_windows[0]->Print ();
+//                    arr_of_windows[0]->Draw ({});
+//                    arr_of_windows[0].MouseClick ();
+                    for (int i = 0; i < 50; i++)
+                    {
+                        ww.MouseClick ();
+                        txSleep (300);
+                    }
+                }
+            }
+        }
+    }
+
 private:
-    vector<ClAbstractWindow *> arr_of_windows;
-}
+    std::vector<ClAbstractWindow> arr_of_windows;
+//    ClManager
+};
 
 //-----------------------------------------------------------------------------
 
@@ -269,6 +332,8 @@ public:
     virtual bool MouseOut   () {}
     virtual bool Delete     () {}
     virtual bool MouseClick () {}
+
+//    operator() (const& ClAbstractWindow, )
 
 private:
 };
