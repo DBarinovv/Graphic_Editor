@@ -2,15 +2,19 @@
 // classes.h
 
 /*
-                SCEME OF EDITOR
+                            SCEME OF EDITOR
 
-                ClAbstractWindow
-                        |
-                        v
-                     window
-                        |
-                        v
-                     button
+                            ClAbstractWindow
+                                /      \
+                               /        \
+                              /          \
+                             /            \
+                            |              |
+                            v              v
+                         window        scrollbar
+                            |
+                            v
+                         button
 
 
 Color_t (size_t red, size_t green, size_t blue)
@@ -20,14 +24,21 @@ Coord_t (int x, int y)
 Button_t (Coord_t left_up, Coord_t right_down)
 */
 
+#define UNPACKING_DRAW_ARGS(args)\
+    const Color_t color = args.color;\
+    char *buf = args.buf;\
+    const Color_t text_color = args.text_color;\
+    bool mouse_over = args.mouse_over;\
+    int step = args.step;
+
+
 class ClAbstractWindow // interface in Java
 {
 public:
     ClAbstractWindow () {}
     ClAbstractWindow (const Coord_t lu, const Coord_t rd) {}
 
-    virtual bool Draw (const Color_t color = {},
-                       char *buf = nullptr, const Color_t text_color = {}, bool mouse_over = false) {}         // return true if color  has been changed
+    virtual bool Draw (const Draw_Args_t args) {}         // return true if color  has been changed
     virtual bool MouseOver  () {} // return true if mouse is over window
     virtual bool MouseOut   () {} // return true if mouse is no longer over window
     virtual bool Delete     () {} // return true if window has been deleted
@@ -44,8 +55,7 @@ public:
     ClRectWindow () {}
     ClRectWindow (const Coord_t lu, const Coord_t rd) {}
 
-    virtual bool Draw (const Color_t color = {},
-                       char *buf = nullptr, const Color_t text_color = {}, bool mouse_over = false) {}
+    virtual bool Draw (const Draw_Args_t args) {}
     virtual bool MouseOver  () {}
     virtual bool MouseOut   () {}
     virtual bool Delete     () {}
@@ -66,12 +76,12 @@ public:
         txRectangle (lu.x, lu.y, rd.x, rd.y);
     }
 
-    virtual bool Draw (const Color_t color = {},
-                       char *buf = nullptr, const Color_t tx_color = {}, bool mouse_over = false)
+    virtual bool Draw (const Draw_Args_t args)
     {
+        UNPACKING_DRAW_ARGS(args)
+
         bg_color = color;
         text = buf;
-        text_color = tx_color;
 
         txSetFillColor (RGB (bg_color.red, bg_color.green, bg_color.blue));
         txRectangle (left_up.x, left_up.y, right_down.x, right_down.y);
@@ -107,22 +117,25 @@ public:
             prev_text_color = text_color;
         }
 
-        Draw (bg_color, text, {}, 1);
+        Draw ({bg_color, text, {}, 1});
     }
 
     virtual bool MouseOut ()
     {
-        Draw (bg_color, text, {prev_text_color.red,
+        Draw ({bg_color, text, {prev_text_color.red,
                                prev_text_color.green,
-                               prev_text_color.blue});
+                               prev_text_color.blue}});
     }
 
     virtual bool Delete ()
     {
-        Draw ();
+        Draw ({});
     }
 
     virtual bool MouseClick () {}
+
+    int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
+    int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
 
 
     ClRectButton& operator= (const ClRectButton& other)
@@ -160,16 +173,29 @@ public:
                  slider      ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 + (rd.y - lu.y) / 12}),
                  down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd)
     {
+        number_of_first_string = 1;
+        max_cnt_of_string = 4; // random number for test (depends on text)
+
         txRectangle (lu.x, lu.y, rd.x, rd.y);
     }
 
-    virtual bool Draw (const Color_t color = {},
-                       char *buf = nullptr, const Color_t text_color = {}, bool mouse_over = false)
+    virtual bool Draw (const Draw_Args_t args)
     {
-        up.Draw ({255, 0, 0});
-        back_ground.Draw ({255, 255, 0});
-        slider.Draw ({255, 0, 255});
-        down.Draw ({0, 255, 255});
+        UNPACKING_DRAW_ARGS(args)
+
+        slider.Delete();
+
+        up.Draw ({{154, 154, 154}});
+        down.Draw ({{154, 154, 154}});
+        back_ground.Draw ({{255, 255, 0}});
+
+
+        slider.Get_And_Change_LU_Y (step); // equal to  { slider.left_up.y    += step;
+        slider.Get_And_Change_RD_Y (step); //           { slider.right_down.y += step;
+
+//        printf ("RD = [%d],  LU = [%d],  height = [%d]\n\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
+
+        slider.Draw ({{237, 48, 0}});
     }
 
     virtual bool MouseOver () {}
@@ -186,6 +212,32 @@ public:
 
     virtual bool MouseClick ()
     {
+        int slider_height = slider.Get_And_Change_RD_Y() - slider.Get_And_Change_LU_Y();
+        int bg_height     = down.Get_And_Change_LU_Y() - up.Get_And_Change_RD_Y();
+
+        int step = (bg_height - slider_height) / max_cnt_of_string;
+
+//        printf ("RD = [%d],  LU = [%d],  height = [%d]\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
+
+        if (number_of_first_string >= max_cnt_of_string)
+        {
+//            printf ("Offset = [%d]\n", step);
+            step = down.Get_And_Change_LU_Y () - slider.Get_And_Change_RD_Y ();
+//            printf ("Offset = [%d]\n", step);
+        }
+
+        if (slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ())
+        {
+            step = 0;
+//            printf ("AAA\n");
+        }
+
+//        if ()
+//        {
+        Draw ({{}, {}, {}, {}, step});
+//        }
+
+        number_of_first_string++;
     }
 
 private:
@@ -193,4 +245,30 @@ private:
     ClRectButton down;
     ClRectButton back_ground;
     ClRectButton slider;
+    size_t max_cnt_of_string;
+    size_t number_of_first_string;
+};
+
+//=============================================================================
+
+class ClApplication
+{
+public:
+
+private:
+    vector<ClAbstractWindow *> arr_of_windows;
+}
+
+//-----------------------------------------------------------------------------
+
+class ClManager : public ClAbstractWindow
+{
+public:
+    virtual bool Draw (const Draw_Args_t args) {}
+    virtual bool MouseOver  () {}
+    virtual bool MouseOut   () {}
+    virtual bool Delete     () {}
+    virtual bool MouseClick () {}
+
+private:
 };

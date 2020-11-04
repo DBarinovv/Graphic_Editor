@@ -24,7 +24,7 @@ int main ()
     ClRectButton wind({100, 101}, {1010, 705});
     ClAbstractWindow& w = wind;
 
-    w.Draw ({128, 0, 256}, "Denis", {59, 49, 157});
+    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
 
     int cnt = 0;
     while (cnt >= 500)
@@ -50,7 +50,22 @@ int main ()
     ClScrollbar sb({100, 100}, {125, 400});
     ClAbstractWindow& ww = sb;
 
-    ww.Draw ();
+//    for (int i = 0; i < 10; i++)
+//    {
+//        ww.Draw ({});
+//        txSleep (1000);
+//    }
+//    ww.Draw ({});
+
+//    Draw_Args_t args = {{}, {} , {2, 4, 8}};
+//
+//    args.Print();
+
+    for (int i = 0; i < 10; i++)
+    {
+        ww.MouseClick ();
+        txSleep (1000);
+    }
 
 
 //    w.Draw ({128, 0, 256}, "Denis", {5, 49, 157});

@@ -46,3 +46,36 @@ struct Coord_t
 
     ~Coord_t() = default;
 };
+
+//-----------------------------------------------------------------------------
+
+struct Draw_Args_t
+{
+    Draw_Args_t (const Color_t color = {}, char *buf = nullptr, const Color_t text_color = {},
+                 bool mouse_over = false, const int step = 0) :
+                 color (color), buf (buf), text_color (text_color), mouse_over (mouse_over), step (step) {}
+
+
+    const Color_t color;
+    char *buf;
+    const Color_t text_color;
+    bool mouse_over;
+    int step;
+
+    void Print ()
+    {
+        printf ("color.red        = [%d]\n", color.red);
+        printf ("color.green      = [%d]\n", color.green);
+        printf ("color.blue       = [%d]\n", color.blue);
+
+        printf ("buf              = [%p]\n", buf);
+
+        printf ("text_color.red   = [%d]\n", text_color.red);
+        printf ("text_color.green = [%d]\n", text_color.green);
+        printf ("text_color.blue  = [%d]\n", text_color.blue);
+
+        printf ("Mouse over       = [%d]\n", mouse_over);
+
+        printf ("Step             = [%d]\n", step);
+    }
+};
