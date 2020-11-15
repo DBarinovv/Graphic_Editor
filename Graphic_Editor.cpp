@@ -1,13 +1,6 @@
 #include "D:\TX\TxLib.h"
 
-#include "auxiliary.h"
-
-#include "classes.h"
-
-//=============================================================================
-
-const int C_max_x_coord = 1200;
-const int C_max_y_coord = 800;
+#include "main_header.h"
 
 //=============================================================================
 
@@ -19,19 +12,49 @@ void Manager ();
 
 int main ()
 {
+    ClAbstractWindow aw;
+    aw.MouseOver ();
+    aw.MouseOut ();
+    aw.MouseClick ();
+
     Create_Background ();
 
-    ClApplication appl;
+    ClScrollbar cls;
+    cls.MouseOver ();
 
-    appl.Start_Program ();
+//    ClApplication appl;
+//
+//    appl.Start_Program ();
 
+//    int sz_of_RGNDATA = Win32::GetRegionData (txDC(), 0, nullptr);
+//
+//    return 0;
+////    RGNDATA *prev_reg = (RGNDATA *) calloc (sz_of_RGNDATA, sizeof (char));
+////
+////    GetRegionData (txDC(), sz_of_RGNDATA, prev_reg)
+//
+//    HRGN region = Win32::CreateRectRgn (500, 0, 600, 600);
+//    Win32::SelectObject (txDC(), region);
+//
 //    ClRectButton wind({100, 101}, {1010, 705});
 //    ClAbstractWindow& w = wind;
 //
 //    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
 //
+//    txSleep (1000);
+//
+//    Win32::SelectObject (txDC(), prev_reg);
+//    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
+//
+//    Win32::DeleteObject (region);
+//
+////    w.Draw ({{128, 0, 256}, "Denis", {59, 49, 157}});
+//
+//    txSleep (1000);
+
+//
 //    int cnt = 0;
-//    while (cnt >= 500)
+//    while (cnt <= 500)
 //    {
 //        while (!In (txMousePos(), {100, 101, 1010, 705})) {}
 //
@@ -39,10 +62,10 @@ int main ()
 //
 //        txSleep ();
 //
-////        while (In (txMousePos(), {100, 101, 1010, 705}))
-////        {
-////            w.MouseOver ();
-////        }
+//        while (In (txMousePos(), {100, 101, 1010, 705}))
+//        {
+//            w.MouseOver ();
+//        }
 //
 //        w.MouseOut ();
 //        txSleep ();
@@ -88,7 +111,7 @@ int main ()
 
 void Create_Background ()
 {
-    txCreateWindow (C_max_x_coord, C_max_y_coord);
+    txCreateWindow (ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord);
     txSetFillColor (TX_WHITE);
-    txRectangle (0, 0, C_max_x_coord, C_max_y_coord);
+    txRectangle (0, 0, ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord);
 }

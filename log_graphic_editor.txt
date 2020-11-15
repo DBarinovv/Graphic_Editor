@@ -1,0 +1,4 @@
+TIME = [18:32:57]  FILE = (classes.h)    FUNC = (MouseOver)    LINE OF CALL = [0048]
+TIME = [18:32:57]  FILE = (classes.h)    FUNC = (MouseOut)     LINE OF CALL = [0049]
+TIME = [18:32:57]  FILE = (classes.h)    FUNC = (MouseClick)   LINE OF CALL = [0051]
+TIME = [18:32:57]  FILE = (classes.h)    FUNC = (MouseOver)    LINE OF CALL = [0209]

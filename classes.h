@@ -24,6 +24,11 @@ Coord_t (int x, int y)
 Button_t (Coord_t left_up, Coord_t right_down)
 */
 
+namespace { namespace TX { namespace Win32 {
+    _TX_DLLIMPORT ("GDI32", HRGN,  CreateRectRgn, (int x0, int y0, int x1, int y1));
+    _TX_DLLIMPORT ("GDI32", DWORD, GetRegionData, (HRGN hrgn, DWORD nCount, LPRGNDATA lpRgnData));
+}}}
+
 #include <vector>
 
 #define UNPACKING_DRAW_ARGS(args)\
@@ -33,22 +38,21 @@ Button_t (Coord_t left_up, Coord_t right_down)
     bool mouse_over = args.mouse_over;\
     int step = args.step;
 
-
 class ClAbstractWindow // interface in Java
 {
 public:
     ClAbstractWindow () {}
     ClAbstractWindow (const Coord_t lu, const Coord_t rd) {}
 
-    virtual bool Draw (const Draw_Args_t args) {}         // return true if color  has been changed
-    virtual bool MouseOver  () {} // return true if mouse is over window
-    virtual bool MouseOut   () {} // return true if mouse is no longer over window
-    virtual bool Delete     () {} // return true if window has been deleted
-    virtual bool MouseClick () { printf ("A"); }
+    virtual bool Draw (const Draw_Args_t args) { PR_LOG }         // return true if color  has been changed
+    virtual bool MouseOver  () { PR_LOG } // return true if mouse is over window
+    virtual bool MouseOut   () { PR_LOG } // return true if mouse is no longer over window
+    virtual bool Delete     () { PR_LOG } // return true if window has been deleted
+    virtual bool MouseClick () { PR_LOG }
 
 //    void Print () { printf ("%p\n", this); }
 
-    ~ClAbstractWindow() = default;
+    virtual ~ClAbstractWindow() = default;
 };
 
 //-----------------------------------------------------------------------------
@@ -59,13 +63,13 @@ public:
     ClRectWindow () {}
     ClRectWindow (const Coord_t lu, const Coord_t rd) {}
 
-    virtual bool Draw (const Draw_Args_t args) {}
-    virtual bool MouseOver  () {}
-    virtual bool MouseOut   () {}
-    virtual bool Delete     () {}
-    virtual bool MouseClick () {}
+    virtual bool Draw (const Draw_Args_t args) { PR_LOG }
+    virtual bool MouseOver  () { PR_LOG }
+    virtual bool MouseOut   () { PR_LOG }
+    virtual bool Delete     () { PR_LOG }
+    virtual bool MouseClick () { PR_LOG }
 
-    ~ClRectWindow() = default;
+    virtual ~ClRectWindow() = default;
 };
 
 //-----------------------------------------------------------------------------
@@ -154,7 +158,7 @@ public:
         return *this;
     }
 
-    ~ClRectButton() = default;
+    virtual ~ClRectButton() = default;
 
 private:
     Coord_t left_up;
@@ -178,7 +182,7 @@ public:
                  down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd)
     {
         number_of_first_string = 1;
-        max_cnt_of_string = 10; // random number for test (depends on text)
+        max_cnt_of_string = 4; // random number for test (depends on text)
 
         txRectangle (lu.x, lu.y, rd.x, rd.y);
     }
@@ -202,7 +206,7 @@ public:
         slider.Draw ({{237, 48, 0}});
     }
 
-    virtual bool MouseOver () {}
+    virtual bool MouseOver () { PR_LOG }
 
     virtual bool MouseOut () {}
 
@@ -223,6 +227,9 @@ public:
 
         int step = (bg_height - slider_height) / max_cnt_of_string;
 
+        int rd = (rand() % 3 - 1);
+        step *= rd;
+
 //        printf ("RD = [%d],  LU = [%d],  height = [%d]\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
 
         if (number_of_first_string >= max_cnt_of_string)
@@ -236,8 +243,6 @@ public:
             step = up.Get_And_Change_RD_Y () - slider.Get_And_Change_LU_Y ();
         }
 
-        int rd = (rand() % 3 - 1);
-        step *= rd;
 
 //        printf ("number_of_first_string = [%d],   step = [%d]\n", number_of_first_string, step);
 
@@ -307,7 +312,7 @@ public:
 //                    arr_of_windows[0]->Print ();
 //                    arr_of_windows[0]->Draw ({});
 //                    arr_of_windows[0].MouseClick ();
-                    for (int i = 0; i < 50; i++)
+                    for (int i = 0; i < 1; i++)
                     {
                         ww.MouseClick ();
                         txSleep (300);
@@ -318,7 +323,7 @@ public:
     }
 
 private:
-    std::vector<ClAbstractWindow> arr_of_windows;
+    std::vector<ClAbstractWindow *> arr_of_windows;
 //    ClManager
 };
 
