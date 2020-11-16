@@ -38,21 +38,74 @@ namespace { namespace TX { namespace Win32 {
     bool mouse_over = args.mouse_over;\
     int step = args.step;
 
+
+
+
+//=============================================================================
+
+class ClViewport
+{
+public:
+    ClViewport (const Coord_t lu = {0, 0},
+                const Coord_t rd = {ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord}) :
+                new_region (Win32::CreateRectRgn (lu.x, lu.y, rd.x, rd.y)) {};
+
+    virtual ~ClViewport () = default;
+
+    ClViewport (const ClViewport&) = default;
+    ClViewport (ClViewport&& dead_viewport) : new_region (std::move (dead_viewport.new_region)) {}
+
+    ClViewport& operator=(const ClViewport&) = default;
+    ClViewport& operator=(ClViewport&& dead_viewport)
+    {
+        new_region = std::move (dead_viewport.new_region);
+
+        return *this;
+    }
+
+
+    HRGN Ret_Region () { return new_region; }
+
+    void Make_Region ()
+    {
+        Win32::SelectObject (txDC(), new_region);
+    }
+
+    void Remove_Region ()
+    {
+        Win32::SelectObject (txDC(), ns_global_vars::main_region);
+
+        Win32::DeleteObject (new_region);
+    }
+
+
+private:
+    HRGN new_region;
+};
+
+//=============================================================================
+
 class ClAbstractWindow // interface in Java
 {
 public:
-    ClAbstractWindow () {}
-    ClAbstractWindow (const Coord_t lu, const Coord_t rd) {}
+//    ClAbstractWindow () {}
+    ClAbstractWindow (const Coord_t lu = {}, const Coord_t rd = {}) {}
 
-    virtual bool Draw (const Draw_Args_t args) { PR_LOG }         // return true if color  has been changed
+    virtual ~ClAbstractWindow ()                         = default;
+
+    ClAbstractWindow (const ClAbstractWindow&)           = default;
+    ClAbstractWindow (ClAbstractWindow&&)                = default;
+
+    ClAbstractWindow& operator=(const ClAbstractWindow&) = default;
+    ClAbstractWindow& operator=(ClAbstractWindow&&)      = default;
+
+    virtual bool Draw (const Draw_Args_t args) { PR_LOG }         // return true if color has been changed
     virtual bool MouseOver  () { PR_LOG } // return true if mouse is over window
     virtual bool MouseOut   () { PR_LOG } // return true if mouse is no longer over window
     virtual bool Delete     () { PR_LOG } // return true if window has been deleted
     virtual bool MouseClick () { PR_LOG }
 
 //    void Print () { printf ("%p\n", this); }
-
-    virtual ~ClAbstractWindow() = default;
 };
 
 //-----------------------------------------------------------------------------
@@ -170,16 +223,74 @@ private:
     int sz_text;
 };
 
+//-----------------------------------------------------------------------------
+
+class ClTextureRectButton : public ClRectButton
+{
+public:
+    ClTextureRectButton (const Coord_t lu = {}, const Coord_t rd = {}, const std::string& image = "") :
+                        ClRectButton (lu, rd), left_up(lu), right_down(rd)
+    {
+        std::string path = "Resources\\Images\\";
+//        std::string path = "D:\\TX\\Examples\\Tennis\\Resources\\Images\\";
+        path += image;
+        texture = txLoadImage (path.c_str(), IMAGE_BITMAP, LR_LOADFROMFILE,
+                                                                            right_down.x - left_up.x,
+                                                                            right_down.y - left_up.y);
+//        texture = txLoadImage ("Resources\\Images\\button_up.bmp");
+
+        if (!texture)
+        {
+            std::string out = "Не могу загрузить картинку(\nPath = ";
+            out += path;
+
+            txMessageBox (out.c_str(), "Да, я скопировал это из примера");
+        }
+    }
+
+    virtual ~ClTextureRectButton () = default;
+
+    ClTextureRectButton (const ClTextureRectButton&) = default
+    ClTextureRectButton (ClTextureRectButton&& dead_button) :
+        left_up (std::move (dead_button.left_up)),
+        right_down (std::move (dead_button.right_down)),
+        texture (std::move (dead_button.texture)) {}
+
+    ClTextureRectButton& operator=(const ClTextureRectButton&) = default;
+    ClTextureRectButton& operator=(ClTextureRectButton&& deleted_button)
+    {
+        // ?
+    }
+
+
+
+
+    virtual bool Draw (const Draw_Args_t args)
+    {
+        txBitBlt (txDC(), left_up.x, left_up.y, right_down.x, right_down.y, texture, 0, 0);
+    }
+
+    virtual bool MouseOver  () { PR_LOG }
+    virtual bool MouseOut   () { PR_LOG }
+    virtual bool Delete     () { PR_LOG }
+    virtual bool MouseClick () { PR_LOG }
+
+private:
+    Coord_t left_up;
+    Coord_t right_down;
+    HDC texture;
+};
+
 //=============================================================================
 
 class ClScrollbar : public ClAbstractWindow
 {
 public:
     ClScrollbar (const Coord_t lu = {}, const Coord_t rd = {}) :
-                 up          (lu,                                   {rd.x, lu.y + (rd.y - lu.y) / 6}),
+                 up          (lu,                                   {rd.x, lu.y + (rd.y - lu.y) / 6}, "button_up.bmp"),
                  back_ground ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 * 5}),
                  slider      ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 + (rd.y - lu.y) / 12}),
-                 down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd)
+                 down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd, "button_down.bmp")
     {
         number_of_first_string = 1;
         max_cnt_of_string = 4; // random number for test (depends on text)
@@ -273,8 +384,8 @@ public:
     }
 
 private:
-    ClRectButton up;
-    ClRectButton down;
+    ClTextureRectButton up;
+    ClTextureRectButton down;
     ClRectButton back_ground;
     ClRectButton slider;
     size_t max_cnt_of_string;
@@ -299,6 +410,8 @@ public:
 
     void Start_Program ()
     {
+        ns_global_vars::main_region = Win32::CreateRectRgn (0, 0, ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord);
+
         ClScrollbar sb({100, 100}, {125, 400});
         ClAbstractWindow& ww = sb;
 
