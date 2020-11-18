@@ -35,10 +35,13 @@ inline void Print_Log (const char file[], const char name_of_function[], const i
     res_name += name_of_function;
     res_name += ")";
 
-    fprintf (ns_global_vars::log_file, "TIME = [%s]  %-20s  %-20s  LINE OF CALL = [%0.4d]\n", __TIME__, res_file.c_str(), res_name.c_str(), line);
+    fprintf (ns_global_vars::log_file, "TIME = [%s]  %-25s  %-25s  LINE OF CALL = [%0.4d]\n", __TIME__, res_file.c_str(), res_name.c_str(), line);
 }
 
 //=============================================================================
 
 #include "auxiliary.h"
 #include "classes.h"
+
+
+#undef PR_LOG

@@ -32,7 +32,7 @@ int main ()
 //    wtb.Draw ({});
 
     Create_Background ();
-//
+
     ClApplication appl;
 
     appl.Start_Program ();

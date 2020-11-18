@@ -38,9 +38,6 @@ namespace { namespace TX { namespace Win32 {
     bool mouse_over = args.mouse_over;\
     int step = args.step;
 
-
-
-
 //=============================================================================
 
 class ClViewport
@@ -104,6 +101,7 @@ public:
     virtual bool MouseOut   () { PR_LOG } // return true if mouse is no longer over window
     virtual bool Delete     () { PR_LOG } // return true if window has been deleted
     virtual bool MouseClick () { PR_LOG }
+    virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
 //    void Print () { printf ("%p\n", this); }
 };
@@ -121,6 +119,7 @@ public:
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
     virtual bool MouseClick () { PR_LOG }
+    virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
     virtual ~ClRectWindow() = default;
 };
@@ -195,8 +194,16 @@ public:
 
     virtual bool MouseClick () {}
 
+    virtual bool Coord_In (const Coord_t coords)
+    {
+        return coords.x >= right_down.x && coords.x <= left_up.x &&
+               coords.y >= right_down.y && coords.x <= left_up.y;
+    }
+
     int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
     int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
+    int Get_And_Change_LU_X (int offset = 0) { left_up.x    += offset; return left_up.x; }
+    int Get_And_Change_RD_X (int offset = 0) { right_down.x += offset; return right_down.x; }
 
 
     ClRectButton& operator= (const ClRectButton& other)
@@ -248,13 +255,16 @@ public:
         }
     }
 
-    virtual ~ClTextureRectButton () = default;
+    virtual ~ClTextureRectButton ()
+    {
+        txDeleteDC (texture);
+    };
 
-    ClTextureRectButton (const ClTextureRectButton&) = default
+    ClTextureRectButton (const ClTextureRectButton&) = default;
     ClTextureRectButton (ClTextureRectButton&& dead_button) :
-        left_up (std::move (dead_button.left_up)),
+        left_up    (std::move (dead_button.left_up)),
         right_down (std::move (dead_button.right_down)),
-        texture (std::move (dead_button.texture)) {}
+        texture    (std::move (dead_button.texture)) {}
 
     ClTextureRectButton& operator=(const ClTextureRectButton&) = default;
     ClTextureRectButton& operator=(ClTextureRectButton&& deleted_button)
@@ -274,6 +284,12 @@ public:
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
     virtual bool MouseClick () { PR_LOG }
+
+    virtual bool Coord_In (const Coord_t coords)
+    {
+        return coords.x >= right_down.x && coords.x <= left_up.x &&
+               coords.y >= right_down.y && coords.x <= left_up.y;
+    }
 
 private:
     Coord_t left_up;
@@ -319,7 +335,7 @@ public:
 
     virtual bool MouseOver () { PR_LOG }
 
-    virtual bool MouseOut () {}
+    virtual bool MouseOut () { PR_LOG }
 
     virtual bool Delete ()
     {
@@ -383,6 +399,22 @@ public:
         }
     }
 
+    virtual bool Coord_In (const Coord_t coords)
+    {
+        PR_LOG
+
+//        printf ("BOOL = [%d]  ", coords.x >= down.Get_And_Change_RD_X () && coords.x <= up.Get_And_Change_LU_X () &&
+//               coords.y >= down.Get_And_Change_RD_Y () && coords.y <= up.Get_And_Change_LU_Y ());
+//
+//        printf ("coords.x = [%d] coords.y = [%d] ", coords.x, coords.y);
+//
+//        printf ("down RD = [%d], [%d]  ", down.Get_And_Change_RD_X (), down.Get_And_Change_RD_Y ());
+//        printf ("up LU = [%d], [%d]\n", up.Get_And_Change_LU_X (), up.Get_And_Change_LU_Y ());
+
+        return coords.x <= down.Get_And_Change_RD_X () && coords.x >= up.Get_And_Change_LU_X () &&
+               coords.y <= down.Get_And_Change_RD_Y () && coords.y >= up.Get_And_Change_LU_Y ();
+    }
+
 private:
     ClTextureRectButton up;
     ClTextureRectButton down;
@@ -398,46 +430,81 @@ class ClApplication
 {
 public:
 
-    ClApplication ()
-    {
-//        ClAbstractWindow *ww = new ClAbstractWindow(w);
-
-//        arr_of_windows[0]->Print ();
-
-//        arr_of_windows[0]->Draw ({});
-//        ww->Draw ({});
-    }
+    ClApplication () = default;
+    virtual ~ClApplication () = default;
+//    {
+//        for (auto& window : arr_of_windows)
+//        {
+//            window->~ClAbstractWindow();
+//        }
+//    }
 
     void Start_Program ()
     {
         ns_global_vars::main_region = Win32::CreateRectRgn (0, 0, ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord);
+        arr_of_windows.emplace_back (new ClAbstractWindow);
 
-        ClScrollbar sb({100, 100}, {125, 400});
+        ClScrollbar sb({100, 100}, {225, 400});
         ClAbstractWindow& ww = sb;
+        arr_of_windows.push_back (&ww);
 
+        ClScrollbar sb2({150, 120}, {240, 420});
+        ClAbstractWindow& ww2 = sb2;
+        arr_of_windows.push_back (&ww2);
+
+        Draw_All();
+
+        PR_LOG
+
+        int helper = 0;
         while (!txGetAsyncKeyState (VK_ESCAPE))
         {
-            int helper = 0;
+            helper = 0;
             if ((helper = txMouseButtons()) != 3)
             {
                 if (helper & 1)
                 {
-//                    arr_of_windows[0]->Print ();
-//                    arr_of_windows[0]->Draw ({});
-//                    arr_of_windows[0].MouseClick ();
-                    for (int i = 0; i < 1; i++)
+                    Coord_t coords = txMousePos();
+
+                    for (int i = arr_of_windows.size() - 1; i >= 0; i--)
                     {
-                        ww.MouseClick ();
-                        txSleep (300);
+                        if (arr_of_windows[i]->Coord_In (coords))
+                        {
+                            arr_of_windows[i]->Draw (Draw_Args_t());
+
+                            if (i != 0)
+                            {
+                                for (int k = i; k < arr_of_windows.size() - 1; k++)       //}
+                                {                                                         //|
+                                    std::swap (arr_of_windows[k], arr_of_windows[k + 1]); //| Make i window last
+                                    PR_LOG
+                                }                                                         //}
+                            }
+
+                            break;
+                        }
                     }
+
+//                    printf ("Click!\n");
+
+                    Draw_All();
+                    txSleep (300);
                 }
             }
+
+        }
+    }
+
+    void Draw_All ()
+    {
+        for (auto& window : arr_of_windows)
+        {
+            window->Draw(Draw_Args_t());
         }
     }
 
 private:
     std::vector<ClAbstractWindow *> arr_of_windows;
-//    ClManager
 };
 
 //-----------------------------------------------------------------------------
