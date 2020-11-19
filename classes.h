@@ -45,10 +45,15 @@ class ClViewport
 public:
     ClViewport (const Coord_t lu = {0, 0},
                 const Coord_t rd = {ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord}) :
-                new_region (Win32::CreateRectRgn (lu.x, lu.y, rd.x, rd.y)) {};
+                new_region (Win32::CreateRectRgn (lu.x, lu.y, rd.x, rd.y)),
+                left_up (lu), right_down (rd) {};
 
-    virtual ~ClViewport () = default;
+    virtual ~ClViewport ()
+    {
+        Win32::DeleteObject (new_region);
+    }
 
+    // change
     ClViewport (const ClViewport&) = default;
     ClViewport (ClViewport&& dead_viewport) : new_region (std::move (dead_viewport.new_region)) {}
 
@@ -71,13 +76,17 @@ public:
     void Remove_Region ()
     {
         Win32::SelectObject (txDC(), ns_global_vars::main_region);
-
-        Win32::DeleteObject (new_region);
     }
 
+    int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
+    int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
+    int Get_And_Change_LU_X (int offset = 0) { left_up.x    += offset; return left_up.x; }
+    int Get_And_Change_RD_X (int offset = 0) { right_down.x += offset; return right_down.x; }
 
 private:
     HRGN new_region;
+    Coord_t left_up;
+    Coord_t right_down;
 };
 
 //=============================================================================
@@ -100,7 +109,7 @@ public:
     virtual bool MouseOver  () { PR_LOG } // return true if mouse is over window
     virtual bool MouseOut   () { PR_LOG } // return true if mouse is no longer over window
     virtual bool Delete     () { PR_LOG } // return true if window has been deleted
-    virtual bool MouseClick () { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
     virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
 //    void Print () { printf ("%p\n", this); }
@@ -118,7 +127,7 @@ public:
     virtual bool MouseOver  () { PR_LOG }
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
-    virtual bool MouseClick () { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
     virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
     virtual ~ClRectWindow() = default;
@@ -192,7 +201,7 @@ public:
         Draw ({});
     }
 
-    virtual bool MouseClick () {}
+    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
 
     virtual bool Coord_In (const Coord_t coords)
     {
@@ -200,10 +209,10 @@ public:
                coords.y >= right_down.y && coords.x <= left_up.y;
     }
 
-    int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
-    int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
-    int Get_And_Change_LU_X (int offset = 0) { left_up.x    += offset; return left_up.x; }
-    int Get_And_Change_RD_X (int offset = 0) { right_down.x += offset; return right_down.x; }
+    virtual int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
+    virtual int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
+    virtual int Get_And_Change_LU_X (int offset = 0) { left_up.x    += offset; return left_up.x; }
+    virtual int Get_And_Change_RD_X (int offset = 0) { right_down.x += offset; return right_down.x; }
 
 
     ClRectButton& operator= (const ClRectButton& other)
@@ -273,23 +282,35 @@ public:
     }
 
 
-
-
     virtual bool Draw (const Draw_Args_t args)
     {
-        txBitBlt (txDC(), left_up.x, left_up.y, right_down.x, right_down.y, texture, 0, 0);
+        if (left_up.y < 0)
+        {
+            txBitBlt (txDC(), left_up.x, 0, right_down.x, right_down.y, texture, 0, -left_up.y);
+        }
+        else
+        {
+            txBitBlt (txDC(), left_up.x, left_up.y, right_down.x, right_down.y, texture, 0, 0);
+        }
+
+
     }
 
     virtual bool MouseOver  () { PR_LOG }
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
-    virtual bool MouseClick () { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
 
     virtual bool Coord_In (const Coord_t coords)
     {
         return coords.x >= right_down.x && coords.x <= left_up.x &&
                coords.y >= right_down.y && coords.x <= left_up.y;
     }
+
+    virtual int Get_And_Change_LU_Y (int offset = 0) { left_up.y    += offset; return left_up.y; }
+    virtual int Get_And_Change_RD_Y (int offset = 0) { right_down.y += offset; return right_down.y; }
+    virtual int Get_And_Change_LU_X (int offset = 0) { left_up.x    += offset; return left_up.x; }
+    virtual int Get_And_Change_RD_X (int offset = 0) { right_down.x += offset; return right_down.x; }
 
 private:
     Coord_t left_up;
@@ -306,10 +327,12 @@ public:
                  up          (lu,                                   {rd.x, lu.y + (rd.y - lu.y) / 6}, "button_up.bmp"),
                  back_ground ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 * 5}),
                  slider      ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 + (rd.y - lu.y) / 12}),
-                 down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd, "button_down.bmp")
+                 down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd, "button_down.bmp"),
+                 view        ({rd.x, lu.y},                         {rd.x + 600, rd.y}),
+                 image       ({rd.x, lu.y},                         {rd.x + 600, rd.y + 200}, "cat.bmp")
     {
         number_of_first_string = 1;
-        max_cnt_of_string = 4; // random number for test (depends on text)
+        max_cnt_of_string = 10; // random number for test (depends on text)
 
         txRectangle (lu.x, lu.y, rd.x, rd.y);
     }
@@ -319,6 +342,7 @@ public:
         UNPACKING_DRAW_ARGS(args)
 
         slider.Delete();
+//        image.Delete();
 
         up.Draw ({{154, 154, 154}});
         down.Draw ({{154, 154, 154}});
@@ -331,6 +355,10 @@ public:
 //        printf ("RD = [%d],  LU = [%d],  height = [%d]\n\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
 
         slider.Draw ({{237, 48, 0}});
+
+        view.Make_Region ();
+        image.Draw ({});
+        view.Remove_Region ();
     }
 
     virtual bool MouseOver () { PR_LOG }
@@ -345,7 +373,7 @@ public:
         slider.Delete ();
     }
 
-    virtual bool MouseClick ()
+    virtual bool MouseClick (const Coord_t coords)
     {
 //        printf ("number_of_first_string = [%d]\n", number_of_first_string);
 
@@ -354,8 +382,22 @@ public:
 
         int step = (bg_height - slider_height) / max_cnt_of_string;
 
-        int rd = (rand() % 3 - 1);
-        step *= rd;
+//        int rd = (rand() % 3 - 1);
+//        step *= rd;
+        int way = 0;
+        if (coords.x >= up.Get_And_Change_LU_X () && coords.x <= down.Get_And_Change_RD_X ())
+        {
+            if (coords.y >= up.Get_And_Change_RD_Y () && coords.y <= slider.Get_And_Change_LU_Y ())
+            {
+                way = -1;
+            }
+            else if (coords.y >= slider.Get_And_Change_RD_Y () && coords.y <= down.Get_And_Change_LU_Y ())
+            {
+                way = 1;
+            }
+        }
+
+        step *= way;
 
 //        printf ("RD = [%d],  LU = [%d],  height = [%d]\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
 
@@ -372,6 +414,7 @@ public:
 
 
 //        printf ("number_of_first_string = [%d],   step = [%d]\n", number_of_first_string, step);
+//        printf ("1Step = [%d]\n", step);
 
         if (((slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ()) && step > 0) ||
             ((slider.Get_And_Change_LU_Y () ==   up.Get_And_Change_RD_Y ()) && step < 0))
@@ -380,23 +423,36 @@ public:
 //            printf ("AAA\n");
         }
 
+        int image_step = (((image.Get_And_Change_RD_Y () - image.Get_And_Change_LU_Y ()) -
+                           ( view.Get_And_Change_RD_Y () -  view.Get_And_Change_LU_Y ())) / (max_cnt_of_string)) * way;
+
+        if (step == 0) image_step = 0;
+//        printf ("image_step = [%d]\n", image_step);
+
+        image.Get_And_Change_LU_Y (-image_step); //}
+        image.Get_And_Change_RD_Y (-image_step); //} - for reverse
+
 //        if ()
 //        {
+
+//        printf ("2Step = [%d]\n\n", step);
 
 
         Draw ({{}, {}, {}, {}, step});
 //        }
 
-        number_of_first_string += rd;
+        number_of_first_string += way;
 
-        if (number_of_first_string > max_cnt_of_string)
-        {
-            number_of_first_string = max_cnt_of_string;
-        }
-        else if (number_of_first_string < 1)
-        {
-            number_of_first_string = 1;
-        }
+        Clamp (number_of_first_string, (size_t) 1, max_cnt_of_string);
+
+//        if (number_of_first_string > max_cnt_of_string)
+//        {
+//            number_of_first_string = max_cnt_of_string;
+//        }
+//        else if (number_of_first_string < 1)
+//        {
+//            number_of_first_string = 1;
+//        }
     }
 
     virtual bool Coord_In (const Coord_t coords)
@@ -418,10 +474,13 @@ public:
 private:
     ClTextureRectButton up;
     ClTextureRectButton down;
-    ClRectButton back_ground;
-    ClRectButton slider;
-    size_t max_cnt_of_string;
-    size_t number_of_first_string;
+    ClRectButton        back_ground;
+    ClRectButton        slider;
+    size_t              max_cnt_of_string;
+    size_t              number_of_first_string;
+
+    ClTextureRectButton image;
+    ClViewport          view;
 };
 
 //=============================================================================
@@ -444,13 +503,13 @@ public:
         ns_global_vars::main_region = Win32::CreateRectRgn (0, 0, ns_global_vars::C_max_x_coord, ns_global_vars::C_max_y_coord);
         arr_of_windows.emplace_back (new ClAbstractWindow);
 
-        ClScrollbar sb({100, 100}, {225, 400});
+        ClScrollbar sb({100, 100}, {150, 400});
         ClAbstractWindow& ww = sb;
         arr_of_windows.push_back (&ww);
 
-        ClScrollbar sb2({150, 120}, {240, 420});
-        ClAbstractWindow& ww2 = sb2;
-        arr_of_windows.push_back (&ww2);
+//        ClScrollbar sb2({150, 120}, {240, 420});
+//        ClAbstractWindow& ww2 = sb2;
+//        arr_of_windows.push_back (&ww2);
 
         Draw_All();
 
@@ -470,6 +529,7 @@ public:
                     {
                         if (arr_of_windows[i]->Coord_In (coords))
                         {
+                            arr_of_windows[i]->MouseClick (coords);
                             arr_of_windows[i]->Draw (Draw_Args_t());
 
                             if (i != 0)
