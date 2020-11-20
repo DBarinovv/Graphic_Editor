@@ -53,14 +53,13 @@ struct Draw_Args_t
 {
     Draw_Args_t (const Color_t color = {}, char *buf = nullptr, const Color_t text_color = {},
                  bool mouse_over = false, const int step = 0) :
-                 color (color), buf (buf), text_color (text_color), mouse_over (mouse_over), step (step) {}
+                 color (color), buf (buf), text_color (text_color), mouse_over (mouse_over) {}
 
 
     const Color_t color;
     char *buf;
     const Color_t text_color;
     bool mouse_over;
-    int step;
 
     void Print ()
     {
@@ -76,7 +75,7 @@ struct Draw_Args_t
 
         printf ("Mouse over       = [%d]\n", mouse_over);
 
-        printf ("Step             = [%d]\n", step);
+//        printf ("Step             = [%d]\n", step);
     }
 };
 

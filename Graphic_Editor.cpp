@@ -16,6 +16,7 @@ int main ()
 {
     // DO
     // is hidden, is focus
+    // viewer controller
     //
 
 //    ClAbstractWindow aw;

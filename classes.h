@@ -31,12 +31,11 @@ namespace { namespace TX { namespace Win32 {
 
 #include <vector>
 
-#define UNPACKING_DRAW_ARGS(args)\
-    const Color_t color = args.color;\
-    char *buf = args.buf;\
-    const Color_t text_color = args.text_color;\
-    bool mouse_over = args.mouse_over;\
-    int step = args.step;
+#define UNPACKING_DRAW_ARGS(args)               \
+    const Color_t color = args.color;           \
+    char *buf = args.buf;                       \
+    const Color_t text_color = args.text_color; \
+    bool mouse_over = args.mouse_over;
 
 //=============================================================================
 
@@ -109,7 +108,7 @@ public:
     virtual bool MouseOver  () { PR_LOG } // return true if mouse is over window
     virtual bool MouseOut   () { PR_LOG } // return true if mouse is no longer over window
     virtual bool Delete     () { PR_LOG } // return true if window has been deleted
-    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords, const ClAbstractWindow *last_window) { PR_LOG }
     virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
 //    void Print () { printf ("%p\n", this); }
@@ -127,7 +126,7 @@ public:
     virtual bool MouseOver  () { PR_LOG }
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
-    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords, const ClAbstractWindow *last_window) { PR_LOG }
     virtual bool Coord_In   (const Coord_t coords) { PR_LOG }
 
     virtual ~ClRectWindow() = default;
@@ -201,7 +200,7 @@ public:
         Draw ({});
     }
 
-    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords, const ClAbstractWindow *last_window) { PR_LOG }
 
     virtual bool Coord_In (const Coord_t coords)
     {
@@ -250,7 +249,7 @@ public:
         std::string path = "Resources\\Images\\";
 //        std::string path = "D:\\TX\\Examples\\Tennis\\Resources\\Images\\";
         path += image;
-        texture = txLoadImage (path.c_str(), IMAGE_BITMAP, LR_LOADFROMFILE,
+        texture = NOtxLoadImage (path.c_str(), IMAGE_BITMAP, LR_LOADFROMFILE,
                                                                             right_down.x - left_up.x,
                                                                             right_down.y - left_up.y);
 //        texture = txLoadImage ("Resources\\Images\\button_up.bmp");
@@ -299,7 +298,7 @@ public:
     virtual bool MouseOver  () { PR_LOG }
     virtual bool MouseOut   () { PR_LOG }
     virtual bool Delete     () { PR_LOG }
-    virtual bool MouseClick (const Coord_t coords) { PR_LOG }
+    virtual bool MouseClick (const Coord_t coords, const ClAbstractWindow *last_window) { PR_LOG }
 
     virtual bool Coord_In (const Coord_t coords)
     {
@@ -322,6 +321,19 @@ private:
 
 class ClScrollbar : public ClAbstractWindow
 {
+private:
+    ClTextureRectButton up;
+    ClTextureRectButton down;
+    ClRectButton        back_ground;
+    ClRectButton        slider;
+    size_t              max_cnt_of_string;
+    size_t              number_of_first_string;
+    bool                is_focused;
+    double              step;
+
+    ClTextureRectButton image;
+    ClViewport          view;
+
 public:
     ClScrollbar (const Coord_t lu = {}, const Coord_t rd = {}) :
                  up          (lu,                                   {rd.x, lu.y + (rd.y - lu.y) / 6}, "button_up.bmp"),
@@ -329,7 +341,8 @@ public:
                  slider      ({lu.x, lu.y + (rd.y - lu.y) / 6},     {rd.x, lu.y + (rd.y - lu.y) / 6 + (rd.y - lu.y) / 12}),
                  down        ({lu.x, lu.y + (rd.y - lu.y) / 6 * 5},  rd, "button_down.bmp"),
                  view        ({rd.x, lu.y},                         {rd.x + 600, rd.y}),
-                 image       ({rd.x, lu.y},                         {rd.x + 600, rd.y + 200}, "cat.bmp")
+                 image       ({rd.x, lu.y},                         {rd.x + 600, rd.y + 200}, "cat.bmp"),
+                 is_focused  (false), step (0.0)
     {
         number_of_first_string = 1;
         max_cnt_of_string = 10; // random number for test (depends on text)
@@ -373,60 +386,109 @@ public:
         slider.Delete ();
     }
 
-    virtual bool MouseClick (const Coord_t coords)
+    virtual bool MouseClick (const Coord_t coords, const ClAbstractWindow *last_window)
     {
 //        printf ("number_of_first_string = [%d]\n", number_of_first_string);
+        if (last_window != this) is_focused = false;
 
         int slider_height = slider.Get_And_Change_RD_Y() - slider.Get_And_Change_LU_Y();
         int bg_height     = down.Get_And_Change_LU_Y() - up.Get_And_Change_RD_Y();
 
-        int step = (bg_height - slider_height) / max_cnt_of_string;
+        step = (bg_height - slider_height) / max_cnt_of_string;
 
 //        int rd = (rand() % 3 - 1);
 //        step *= rd;
-        int way = 0;
+        double way = 0.0;
+        bool change = false;
+
         if (coords.x >= up.Get_And_Change_LU_X () && coords.x <= down.Get_And_Change_RD_X ())
         {
-            if (coords.y >= up.Get_And_Change_RD_Y () && coords.y <= slider.Get_And_Change_LU_Y ())
+            if (coords.y >= up.Get_And_Change_RD_Y () && coords.y <= slider.Get_And_Change_LU_Y ())          // higher than slider
             {
-                way = -1;
+                way = -1.0 / max_cnt_of_string;
+                is_focused = false;
             }
-            else if (coords.y >= slider.Get_And_Change_RD_Y () && coords.y <= down.Get_And_Change_LU_Y ())
+            else if (coords.y >= slider.Get_And_Change_RD_Y () && coords.y <= down.Get_And_Change_LU_Y ())   // below slider
             {
-                way = 1;
+                way = 1.0 / max_cnt_of_string;
+                is_focused = false;
+            }
+            else if (coords.y >= slider.Get_And_Change_LU_Y () && coords.y <= slider.Get_And_Change_RD_Y ()) // over slider
+            {
+                if (is_focused)
+                {
+                    int mid_of_slider = (slider.Get_And_Change_LU_Y () + (slider_height / 2));
+                    step = coords.y - mid_of_slider;
+
+//                    printf ("1Step = [%d]\n", step);
+
+                    Clamp (step, up.Get_And_Change_RD_Y () + (slider_height / 2) - mid_of_slider,
+                               down.Get_And_Change_LU_Y () - (slider_height / 2) - mid_of_slider);
+
+//                    printf ("2Step = [%d]\n\n", step);
+
+                    way = 1.0;
+                }
+                else
+                {
+                    way = 0.0;
+                    change = true;
+                }
+
+            }
+            else if (coords.y >= up.Get_And_Change_LU_Y ()   && coords.y <=  up.Get_And_Change_RD_Y ())  // up button
+            {
+                way = -2.0 / (max_cnt_of_string * 3);
+                is_focused = false;
+            }
+            else if (coords.y >= down.Get_And_Change_LU_Y () && coords.y <= down.Get_And_Change_RD_Y ()) // down button
+            {
+                way = 2.0 / (max_cnt_of_string * 3);
+//                way = 1.0 / (max_cnt_of_string);
+                is_focused = false;
             }
         }
 
         step *= way;
 
+//        printf ("Step = [%f]\n", step);
+
+        Clamp (step, up.Get_And_Change_RD_Y () - slider.Get_And_Change_LU_Y (),
+                   down.Get_And_Change_LU_Y () - slider.Get_And_Change_RD_Y ());
+
+//        printf ("Step = [%f]\n\n", step);
+
 //        printf ("RD = [%d],  LU = [%d],  height = [%d]\n", slider.Get_And_Change_RD_Y (), down.Get_And_Change_LU_Y (), slider_height);
 
-        if (number_of_first_string >= max_cnt_of_string)
-        {
-//            printf ("Offset = [%d]\n", step);
-            step = down.Get_And_Change_LU_Y () - slider.Get_And_Change_RD_Y ();
-//            printf ("Offset = [%d]\n", step);
-        }
-        else if (number_of_first_string <= 0)
-        {
-            step = up.Get_And_Change_RD_Y () - slider.Get_And_Change_LU_Y ();
-        }
+//        if (!is_focused)
+//        {
+//            if (number_of_first_string >= max_cnt_of_string)
+//            {
+//    //            printf ("Offset = [%d]\n", step);
+//                step = down.Get_And_Change_LU_Y () - slider.Get_And_Change_RD_Y ();
+//    //            printf ("Offset = [%d]\n", step);
+//            }
+//            else if (number_of_first_string <= 1)
+//            {
+//                step = up.Get_And_Change_RD_Y () - slider.Get_And_Change_LU_Y ();
+//            }
+//        }
 
 
 //        printf ("number_of_first_string = [%d],   step = [%d]\n", number_of_first_string, step);
 //        printf ("1Step = [%d]\n", step);
 
-        if (((slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ()) && step > 0) ||
-            ((slider.Get_And_Change_LU_Y () ==   up.Get_And_Change_RD_Y ()) && step < 0))
-        {
-            step = 0;
-//            printf ("AAA\n");
-        }
+//        if (((slider.Get_And_Change_RD_Y () == down.Get_And_Change_LU_Y ()) && step > 0) ||
+//            ((slider.Get_And_Change_LU_Y () ==   up.Get_And_Change_RD_Y ()) && step < 0))
+//        {
+//            step = 0.0;
+////            printf ("AAA\n");
+//        }
 
-        int image_step = (((image.Get_And_Change_RD_Y () - image.Get_And_Change_LU_Y ()) -
-                           ( view.Get_And_Change_RD_Y () -  view.Get_And_Change_LU_Y ())) / (max_cnt_of_string)) * way;
+        double image_step = (((image.Get_And_Change_RD_Y () - image.Get_And_Change_LU_Y ()) -
+                              ( view.Get_And_Change_RD_Y () -  view.Get_And_Change_LU_Y ())) / (bg_height - slider_height)) * step;
 
-        if (step == 0) image_step = 0;
+        if (step == 0.0) image_step = 0.0;
 //        printf ("image_step = [%d]\n", image_step);
 
         image.Get_And_Change_LU_Y (-image_step); //}
@@ -438,12 +500,16 @@ public:
 //        printf ("2Step = [%d]\n\n", step);
 
 
-        Draw ({{}, {}, {}, {}, step});
+        Draw ({});
+
+        step = 0.0;
 //        }
 
-        number_of_first_string += way;
+//        number_of_first_string += way;
+//
+//        Clamp (number_of_first_string, 1, max_cnt_of_string);
 
-        Clamp (number_of_first_string, (size_t) 1, max_cnt_of_string);
+        if (change) is_focused = true;
 
 //        if (number_of_first_string > max_cnt_of_string)
 //        {
@@ -470,23 +536,15 @@ public:
         return coords.x <= down.Get_And_Change_RD_X () && coords.x >= up.Get_And_Change_LU_X () &&
                coords.y <= down.Get_And_Change_RD_Y () && coords.y >= up.Get_And_Change_LU_Y ();
     }
-
-private:
-    ClTextureRectButton up;
-    ClTextureRectButton down;
-    ClRectButton        back_ground;
-    ClRectButton        slider;
-    size_t              max_cnt_of_string;
-    size_t              number_of_first_string;
-
-    ClTextureRectButton image;
-    ClViewport          view;
 };
 
 //=============================================================================
 
 class ClApplication
 {
+private:
+    std::vector<ClAbstractWindow *> arr_of_windows;
+
 public:
 
     ClApplication () = default;
@@ -516,6 +574,13 @@ public:
         PR_LOG
 
         int helper = 0;
+        ClAbstractWindow *last_window = arr_of_windows[0];
+
+        txBegin ();
+
+        Draw_All();
+        txSleep ();
+
         while (!txGetAsyncKeyState (VK_ESCAPE))
         {
             helper = 0;
@@ -529,8 +594,10 @@ public:
                     {
                         if (arr_of_windows[i]->Coord_In (coords))
                         {
-                            arr_of_windows[i]->MouseClick (coords);
+                            arr_of_windows[i]->MouseClick (coords, last_window);
                             arr_of_windows[i]->Draw (Draw_Args_t());
+
+                            last_window = arr_of_windows[i];
 
                             if (i != 0)
                             {
@@ -548,11 +615,12 @@ public:
 //                    printf ("Click!\n");
 
                     Draw_All();
-                    txSleep (300);
+                    txSleep ();
                 }
             }
-
         }
+
+        txEnd ();
     }
 
     void Draw_All ()
@@ -562,9 +630,6 @@ public:
             window->Draw(Draw_Args_t());
         }
     }
-
-private:
-    std::vector<ClAbstractWindow *> arr_of_windows;
 };
 
 //-----------------------------------------------------------------------------
